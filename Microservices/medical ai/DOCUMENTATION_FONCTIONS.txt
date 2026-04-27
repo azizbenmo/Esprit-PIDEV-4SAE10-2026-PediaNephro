@@ -1,0 +1,429 @@
+================================================================================
+  DOCUMENTATION DES FICHIERS — RÔLES ET FONCTIONS (BLOC PAR BLOC, LIGNE PAR LIGNE)
+================================================================================
+
+--------------------------------------------------------------------------------
+  FICHIER : app.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Imports ---
+  L1   from fastapi import FastAPI, UploadFile, File
+       → Import de FastAPI (framework API) et des types pour upload de fichier.
+  L2   from pydantic import BaseModel
+       → Import de BaseModel pour définir les schémas de requêtes/réponses.
+  L3   import shutil
+       → Utilitaire pour copier le contenu des fichiers (ex. fichier uploadé).
+  L4   import os
+       → Accès au système de fichiers (ex. supprimer un fichier temporaire).
+  L6   from vision_model import predict_image
+       → Fonction qui classifie une image (Radiographie / Scanner / IRM).
+  L7   from chronos_model import predict_next_value
+       → Fonction qui prédit la prochaine valeur d’une série temporelle.
+  L9   from recommendation_model import RecommendationRequest
+       → Schéma Pydantic des données envoyées pour la recommandation.
+  L10  from recommendation_engine import predict_recommendation
+       → Fonction qui calcule spécialité, examens, priorité, etc.
+
+--- BLOC 2 : Instance FastAPI ---
+  L11  app = FastAPI()
+       → Création de l’application FastAPI (point d’entrée de l’API).
+
+--- BLOC 3 : Endpoint image (import + route) ---
+  L16  from fastapi import HTTPException
+       → Pour renvoyer des erreurs HTTP (ex. 400 Bad Request).
+  L18  @app.post("/prediction_type_fichier")
+       → Déclaration de la route POST pour l’analyse d’image.
+  L19  async def analyze_image(file: UploadFile = File(...)):
+       → Fonction asynchrone ; le fichier est obligatoire (File(...)).
+  L20  # Vérifier l'extension
+  L21  if not file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
+       → Vérifie que le nom du fichier se termine par .png, .jpg ou .jpeg.
+  L22  raise HTTPException(status_code=400, detail="Format non supporté...")
+       → Si format invalide, renvoie une erreur 400 avec un message.
+  L24  file_path = f"temp_{file.filename}"
+       → Chemin du fichier temporaire sur le disque.
+  L26  try:
+       → Début du bloc où l’on peut supprimer le fichier dans finally.
+  L27  # Sauvegarder temporairement
+  L28  with open(file_path, "wb") as buffer:
+       → Ouverture du fichier en écriture binaire.
+  L29  shutil.copyfileobj(file.file, buffer)
+       → Copie du contenu du fichier uploadé vers le disque.
+  L31  prediction, confidence = predict_image(file_path)
+       → Appel du modèle de vision ; retourne (type ou None, confiance).
+  L33  # Si non reconnu (Autre ou confiance faible)
+  L34  if prediction is None:
+       → Si le modèle renvoie None (classe "Autre" ou confiance < seuil).
+  L35  raise HTTPException(...)
+       → Erreur 400 : image non reconnue comme radio/scanner/IRM valide.
+  L40  return { "type": prediction, "confidence": round(confidence, 4), "status": "success" }
+       → Réponse JSON avec le type d’imagerie, la confiance et le statut.
+  L46  finally:
+       → Bloc toujours exécuté (succès ou exception).
+  L47  if os.path.exists(file_path):
+  L48  os.remove(file_path)
+       → Suppression du fichier temporaire pour ne pas encombrer le disque.
+
+--- BLOC 4 : Endpoint constantes (schéma + route) ---
+  L51  class ChronosRequest(BaseModel):
+       → Schéma de la requête pour la prédiction de constante.
+  L52  values: list[float]
+       → Liste obligatoire de nombres (série temporelle).
+  L56  @app.post("/predict_constante")
+       → Route POST pour prédire la prochaine valeur.
+  L57  def predict_constante(data: ChronosRequest):
+       → Reçoit un body JSON avec une clé "values" (liste de floats).
+  L59  next_value = predict_next_value(data.values)
+       → Appel au modèle Chronos ; retourne la valeur prédite suivante.
+  L61  return { "next_value": next_value, "message": "Prochaine valeur prédite " }
+       → Réponse JSON avec la valeur prédite et un message.
+
+--- BLOC 5 : Endpoint recommandation ---
+  L70  @app.post("/predict_recommendation")
+       → Route POST pour obtenir les recommandations IA.
+  L71  def predict_recommendation_endpoint(data: RecommendationRequest):
+       → Reçoit un body JSON validé par le schéma RecommendationRequest.
+  L72  result = predict_recommendation(data)
+       → Appel au moteur de recommandation (recommendation_engine).
+  L73  return { "status": "success", **result }
+       → Réponse avec status + tous les champs de result (spécialité, examens, etc.).
+
+
+--------------------------------------------------------------------------------
+  FICHIER : chronos_model.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Imports ---
+  L1   import pandas as pd
+       → Manipulation de données en tableau (DataFrame) pour Chronos.
+  L2   from chronos import Chronos2Pipeline
+       → Pipeline du modèle Chronos-2 (Amazon) pour séries temporelles.
+
+--- BLOC 2 : Chargement du pipeline ---
+  L4   pipeline = Chronos2Pipeline.from_pretrained(
+  L5       "amazon/chronos-2",
+  L6       device_map="cpu"
+  L7   )
+       → Télécharge et charge le modèle Chronos-2 ; exécution sur CPU.
+
+--- BLOC 3 : Fonction predict_next_value ---
+  L9   def predict_next_value(values):
+       → Entrée : liste de floats (historique de la constante, ex. température).
+  L11  if len(values) < 3:
+  L12  raise ValueError("Minimum 3 valeurs nécessaires")
+       → Chronos a besoin d’au moins 3 points pour prédire.
+  L14  df = pd.DataFrame({
+       → Création d’un DataFrame au format attendu par Chronos.
+  L15  "id": ["patient_1"] * len(values),
+       → Identifiant de série (même id pour toutes les lignes).
+  L16  "timestamp": pd.date_range("2026-01-01", periods=len(values), freq="h"),
+       → Pseudo-dates horaires (fréquence = 1 heure).
+  L17  "target": values
+       → Colonne des valeurs observées (la série à prédire).
+  L18  })
+  L20  prediction = pipeline.predict_df(
+       → Lance la prédiction à partir du DataFrame.
+  L21  df,
+  L22  prediction_length=1,
+       → On demande 1 pas de temps à l’avance.
+  L23  quantile_levels=[0.5],
+       → On utilise la médiane (0.5) comme valeur prédite.
+  L24  id_column="id",
+  L25  timestamp_column="timestamp",
+  L26  target="target"
+       → Noms des colonnes pour id, date et variable cible.
+  L27  )
+  L29  next_value = prediction["0.5"].iloc[-1]
+       → Récupération de la dernière (et seule) valeur prédite (médiane).
+  L31  return float(next_value)
+       → Retourne cette valeur en float Python.
+
+
+--------------------------------------------------------------------------------
+  FICHIER : recommendation_engine.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Fonction predict_recommendation (initialisation) ---
+  L1   def predict_recommendation(data):
+       → Entrée : objet avec les champs de RecommendationRequest (dossier, constantes, etc.).
+  L2   examens_recommandes = []
+  L3   reasons = []
+       → Listes pour accumuler les examens à suggérer et les motifs.
+  L5   specialite = "Pédiatre"
+  L6   rappel = "Contrôle selon avis médical"
+  L7   priorite = "FAIBLE"
+  L8   confidence = 0.70
+       → Valeurs par défaut avant d’appliquer les règles.
+
+--- BLOC 2 : Règle 1 — Urgence vitale ---
+  L10  # 1) Urgence vitale
+  L13  urgence = False
+  L15  if data.temperature_max is not None and data.temperature_max > 38.0:
+  L16  urgence = True
+  L17  reasons.append("fièvre élevée")
+       → Fièvre > 38 °C → urgence et motif "fièvre élevée".
+  L19  if data.saturation_min is not None and data.saturation_min < 95:
+  L20  urgence = True
+  L21  reasons.append("désaturation")
+       → Saturation < 95 % → urgence et "désaturation".
+  L23  if data.frequence_respiratoire_min is not None and data.frequence_respiratoire_min < 12:
+  L24  urgence = True
+  L25  reasons.append("fréquence respiratoire basse")
+       → Fréquence respiratoire < 12 → urgence.
+  L27  if urgence:
+  L28  specialite = "Urgences pédiatriques"
+  L29  priorite = "CRITIQUE"
+  L30  rappel = "Immédiat"
+  L31  confidence = 0.92
+       → En cas d’urgence : spécialité urgences, priorité CRITIQUE, rappel immédiat.
+  L33  if "Examen clinique" not in data.examens_existants:
+  L34  examens_recommandes.append("Examen clinique")
+  L35  if "Prise de sang" not in data.examens_existants:
+  L36  examens_recommandes.append("Prise de sang")
+       → Ajout d’examens clinique et prise de sang si pas déjà faits.
+
+--- BLOC 3 : Règle 2 — Signes urinaires / rénaux ---
+  L39  signes_urinaires = any(x in data.examens_existants for x in [
+  L40  "Bandelette urinaire", "Recherche de sang dans les urines", ...
+  L45  ])
+       → True si au moins un de ces examens urinaires est dans le dossier.
+  L47  if signes_urinaires:
+  L48  reasons.append("signes urinaires détectés")
+  L50  for ex in [ "ECBU", "Analyse des urines", "Créatinine", "Urée", ... ]:
+  L58  if ex not in data.examens_existants:
+  L59  examens_recommandes.append(ex)
+       → Ajout des examens rénaux/urinaires non déjà présents.
+  L61  if priorite != "CRITIQUE":
+  L62  specialite = "Pédiatre / Néphrologue"
+  L63  priorite = "MOYENNE"
+  L64  rappel = "Contrôle sous 48h"
+  L65  confidence = max(confidence, 0.85)
+       → Si pas déjà en CRITIQUE : spécialité néphro, priorité MOYENNE, rappel 48h.
+
+--- BLOC 4 : Règle 3 — Prédictions futures ---
+  L70  if priorite == "FAIBLE":
+       → Ne s’applique que si pas déjà remonté en urgence ou signes urinaires.
+  L71  if data.prediction_temperature_next is not None and data.prediction_temperature_next > 38:
+  L72  priorite = "MOYENNE"
+  L73  reasons.append("température future estimée élevée")
+  L74  confidence = max(confidence, 0.80)
+       → Température prédite > 38 → priorité MOYENNE.
+  L76  if data.prediction_pouls_next is not None and ( ... < 60 or ... > 100 ):
+  L79  priorite = "MOYENNE"
+  L80  reasons.append("pouls futur estimé anormal")
+  L81  confidence = max(confidence, 0.80)
+       → Pouls prédit hors plage 60–100 → priorité MOYENNE.
+
+--- BLOC 5 : Règle 4 — Imagerie ---
+  L85  if data.has_imagerie:
+  L86  reasons.append("imagerie disponible")
+  L87  confidence = min(confidence + 0.02, 0.99)
+       → Présence d’imagerie : motif ajouté et légère hausse de confiance (plafond 0.99).
+
+--- BLOC 6 : Règle 5 — Nombre d’alertes ---
+  L92  if data.alert_count >= 3 and priorite == "FAIBLE":
+  L93  priorite = "MOYENNE"
+  L94  reasons.append("plusieurs alertes détectées")
+  L95  confidence = max(confidence, 0.82)
+       → Au moins 3 alertes et priorité encore FAIBLE → passage en MOYENNE.
+
+--- BLOC 7 : Nettoyage et retour ---
+  L97  examens_recommandes = list(dict.fromkeys(examens_recommandes))
+       → Suppression des doublons en gardant l’ordre.
+  L99  return {
+  L100 "specialite": specialite,
+  L101 "examens_recommandes": examens_recommandes,
+  L102 "rappel_controle": rappel,
+  L103 "niveau_priorite": priorite,
+  L104 "confidence": round(confidence, 4),
+  L105 "reason": ", ".join(reasons) if reasons else "Analyse standard du dossier"
+  L106 }
+       → Dictionnaire renvoyé à l’API (fusionné dans la réponse dans app.py).
+
+
+--------------------------------------------------------------------------------
+  FICHIER : recommendation_model.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Imports ---
+  L1   from pydantic import BaseModel
+       → Pour définir un modèle de données avec validation.
+  L2   from typing import List, Optional
+       → List pour listes typées, Optional pour champs optionnels.
+
+--- BLOC 2 : Classe RecommendationRequest ---
+  L5   class RecommendationRequest(BaseModel):
+       → Schéma de la requête JSON pour l’endpoint de recommandation.
+  L6   dossier_id: int
+       → Identifiant du dossier patient (obligatoire).
+  L7   temperature_max: Optional[float] = None
+       → Température maximale connue ; optionnel.
+  L8   saturation_min: Optional[float] = None
+       → Saturation minimale (O2) ; optionnel.
+  L9   frequence_respiratoire_min: Optional[float] = None
+       → Fréquence respiratoire minimale ; optionnel.
+  L10  pouls_last: Optional[float] = None
+       → Dernière valeur de pouls ; optionnel.
+  L11  prediction_temperature_next: Optional[float] = None
+       → Prédiction de la prochaine température (ex. via Chronos).
+  L12  prediction_pouls_next: Optional[float] = None
+       → Prédiction du prochain pouls.
+  L13  has_imagerie: bool = False
+       → True si le dossier contient des examens d’imagerie.
+  L14  alert_count: int = 0
+       → Nombre d’alertes déjà détectées.
+  L15  examens_existants: List[str] = []
+       → Liste des noms d’examens déjà réalisés (pour éviter de redemander).
+
+
+--------------------------------------------------------------------------------
+  FICHIER : train_model.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Imports et device ---
+  L1   import torch
+  L2   import torch.nn as nn
+  L3   import torch.optim as optim
+       → PyTorch : réseau, couches, optimiseur.
+  L4   from torchvision import datasets, models, transforms
+       → Datasets (ImageFolder), architectures (ResNet), transformations d’images.
+  L5   from torch.utils.data import DataLoader
+       → Chargement par lots (batches).
+  L7   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+       → Entraînement sur GPU si disponible, sinon CPU.
+
+--- BLOC 2 : Transformations et jeux de données ---
+  L10  transform = transforms.Compose([
+  L11  transforms.Resize((224, 224)),
+  L12  transforms.RandomHorizontalFlip(),
+  L13  transforms.RandomRotation(10),
+  L14  transforms.ToTensor()
+  L15  ])
+       → Redimensionnement 224×224, augmentation (retournement, rotation 10°), conversion en tenseur.
+  L18  train_dataset = datasets.ImageFolder("dataset/train", transform=transform)
+  L19  val_dataset = datasets.ImageFolder("dataset/val", transform=transform)
+       → Chargement des images depuis dataset/train et dataset/val ; structure par dossiers = classes (ex. Autre, IRM, Radiographie, Scanner).
+  L21  train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+  L22  val_loader = DataLoader(val_dataset, batch_size=16)
+       → Lots de 16 images ; mélange uniquement pour l’entraînement.
+
+--- BLOC 3 : Modèle, perte, optimiseur ---
+  L25  model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+       → ResNet18 pré-entraîné sur ImageNet.
+  L26  model.fc = nn.Linear(model.fc.in_features, len(train_dataset.classes))
+       → Remplacement de la dernière couche pour avoir autant de sorties que de classes (4).
+  L27  model = model.to(device)
+       → Déplacement du modèle sur GPU/CPU.
+  L29  criterion = nn.CrossEntropyLoss()
+       → Perte pour classification multi-classes.
+  L30  optimizer = optim.Adam(model.parameters(), lr=0.0005)
+       → Optimiseur Adam, learning rate 0.0005.
+
+--- BLOC 4 : Boucle d’entraînement ---
+  L32  print(f"Entraînement lancé sur {len(train_dataset.classes)} classes : {train_dataset.classes}")
+  L35  for epoch in range(5):
+       → 5 époques.
+  L36  model.train()
+       → Mode entraînement (dropout, batch norm actifs).
+  L37  running_loss = 0.0
+  L38  correct = 0
+  L39  total = 0
+       → Compteurs pour loss et précision.
+  L41  for images, labels in train_loader:
+  L42  images, labels = images.to(device), labels.to(device)
+       → Envoi des lots sur le device.
+  L44  optimizer.zero_grad()
+       → Remise à zéro des gradients.
+  L45  outputs = model(images)
+  L46  loss = criterion(outputs, labels)
+  L47  loss.backward()
+  L48  optimizer.step()
+       → Forward, calcul de la perte, rétropropagation, mise à jour des poids.
+  L50  running_loss += loss.item()
+  L51  _, predicted = torch.max(outputs, 1)
+  L52  total += labels.size(0)
+  L53  correct += (predicted == labels).sum().item()
+       → Accumulation de la loss et du nombre de prédictions correctes.
+  L55  accuracy = 100 * correct / total
+  L56  print(f"Epoch {epoch+1} - Loss: ... - Accuracy: ...")
+       → Affichage de la loss et de l’accuracy par époque.
+
+--- BLOC 5 : Sauvegarde ---
+  L59  torch.save(model.state_dict(), "medical_model.pth")
+  L60  print("✅ Modèle mis à jour avec la classe 'Autre'")
+       → Sauvegarde des poids dans medical_model.pth (utilisé par vision_model.py).
+
+
+--------------------------------------------------------------------------------
+  FICHIER : vision_model.py
+--------------------------------------------------------------------------------
+
+--- BLOC 1 : Imports ---
+  L1   import os
+       → Pour construire le chemin du fichier de poids.
+  L2   import torch
+  L3   from torchvision import models, transforms
+       → Modèle ResNet et transformations d’image.
+  L4   from PIL import Image
+       → Ouverture et conversion d’images (ex. en RGB).
+  L5   import torch.nn.functional as F
+       → Pour softmax (probabilités).
+
+--- BLOC 2 : Chemin du modèle et labels ---
+  L7   MODEL_PATH = os.path.join(os.path.dirname(__file__), "medical_model.pth")
+       → Chemin vers medical_model.pth (même dossier que vision_model.py).
+  L9   labels = ["Autre", "IRM", "Radiographie", "Scanner"]
+  L10  num_classes = len(labels)
+       → Les 4 classes du classifieur (ordre doit correspondre à train_model / ImageFolder).
+
+--- BLOC 3 : Construction et chargement du modèle ---
+  L12  model = models.resnet18(weights=None)
+       → ResNet18 sans poids ImageNet (structure seule).
+  L13  model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
+       → Dernière couche : sortie de taille 4.
+  L16  if os.path.exists(MODEL_PATH):
+  L17  try:
+  L18  model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
+       → Chargement des poids entraînés (train_model.py) ; map_location pour CPU.
+  L19  except RuntimeError:
+  L20  print("⚠️ Le modèle existant n'a pas le bon nombre de classes...")
+       → Si l’ancien modèle n’a pas 4 classes, on garde les poids par défaut (non chargés).
+  L21  model.eval()
+       → Mode évaluation (pas de dropout, batch norm en mode inference).
+
+--- BLOC 4 : Transformations et seuil ---
+  L23  transform = transforms.Compose([
+  L24  transforms.Resize((224, 224)),
+  L25  transforms.ToTensor()
+  L26  ])
+       → Même taille que à l’entraînement (224×224), pas d’augmentation en inférence.
+  L28  CONFIDENCE_THRESHOLD = 0.85
+       → En dessous de 0.85 (ou si classe "Autre"), on considère l’image non reconnue.
+
+--- BLOC 5 : Fonction predict_image ---
+  L30  def predict_image(image_path):
+       → Entrée : chemin vers une image (ex. fichier temporaire uploadé).
+  L31  image = Image.open(image_path).convert("RGB")
+       → Ouverture et conversion en RGB (3 canaux).
+  L32  image = transform(image).unsqueeze(0)
+       → Redimensionnement, conversion en tenseur, ajout d’une dimension batch (1, 3, 224, 224).
+  L34  with torch.no_grad():
+       → Désactivation du calcul des gradients (économie mémoire et calcul).
+  L35  outputs = model(image)
+       → Sortie brute du réseau (logits).
+  L36  probabilities = F.softmax(outputs, dim=1)
+       → Conversion en probabilités (somme = 1 par image).
+  L38  confidence, prediction_index = torch.max(probabilities, 1)
+       → Récupération de la probabilité max et de l’indice de la classe.
+  L39  confidence = confidence.item()
+  L40  predicted_label = labels[prediction_index.item()]
+       → Confiance et nom de la classe (string).
+  L42  if confidence < CONFIDENCE_THRESHOLD or predicted_label == "Autre":
+  L43  return None, confidence
+       → Si confiance trop faible ou classe "Autre", on renvoie None pour indiquer "non reconnu".
+  L45  return predicted_label, confidence
+       → Sinon on renvoie le label (Radiographie, Scanner ou IRM) et la confiance.
+
+================================================================================
+  FIN DE LA DOCUMENTATION
+================================================================================

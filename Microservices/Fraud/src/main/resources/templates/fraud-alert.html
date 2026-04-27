@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Alerte de Fraude - PediaNephro</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f0f4f8; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8; padding: 40px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 32px 40px; text-align: center;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: 1px;">
+                            🏥 PediaNephro
+                        </h1>
+                        <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 14px;">
+                            Système de Détection de Fraude
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Alert Banner -->
+                <tr>
+                    <td style="padding: 0;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td th:style="'padding: 20px 40px; text-align: center; background-color: ' + (${alertLevel} == 'CRITIQUE' ? '#fef2f2' : (${alertLevel} == 'ÉLEVÉ' ? '#fff7ed' : '#fffbeb')) + ';'">
+                                    <span th:style="'display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #fff; background-color: ' + (${alertLevel} == 'CRITIQUE' ? '#dc2626' : (${alertLevel} == 'ÉLEVÉ' ? '#ea580c' : '#d97706')) + ';'"
+                                          th:text="'⚠️ NIVEAU D\'ALERTE: ' + ${alertLevel}">
+                                        ⚠️ NIVEAU D'ALERTE
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                    <td style="padding: 32px 40px;">
+                        <h2 style="margin: 0 0 16px 0; color: #1e293b; font-size: 20px; font-weight: 600;">
+                            Activité Suspecte Détectée
+                        </h2>
+                        <p style="margin: 0 0 24px 0; color: #64748b; font-size: 15px; line-height: 1.6;">
+                            Notre système de détection de fraude a identifié une activité suspecte sur votre compte.
+                            Veuillez consulter les détails ci-dessous et prendre les mesures nécessaires.
+                        </p>
+
+                        <!-- Score Display -->
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                            <tr>
+                                <td align="center">
+                                    <table role="presentation" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="text-align: center; padding: 24px 40px; background: linear-gradient(135deg, #1e293b, #334155); border-radius: 12px;">
+                                                <p style="margin: 0 0 4px 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">
+                                                    Score de Fraude
+                                                </p>
+                                                <p th:style="'margin: 0; font-size: 42px; font-weight: 800; color: ' + (${alertLevel} == 'CRITIQUE' ? '#ef4444' : (${alertLevel} == 'ÉLEVÉ' ? '#f97316' : '#eab308')) + ';'"
+                                                   th:text="${score} + '%'">
+                                                    75.0%
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Details Table -->
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                            <tr style="background-color: #f8fafc;">
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600; width: 40%;">
+                                    🆔 ID Utilisateur
+                                </td>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;" th:text="${userId}">
+                                    123
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;">
+                                    🎯 Action Détectée
+                                </td>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;" th:text="${action}">
+                                    LOGIN
+                                </td>
+                            </tr>
+                            <tr style="background-color: #f8fafc;">
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;">
+                                    🌐 Adresse IP
+                                </td>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;" th:text="${ipAddress}">
+                                    192.168.1.1
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;">
+                                    📱 Appareil
+                                </td>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;" th:text="${deviceInfo}">
+                                    Chrome Windows
+                                </td>
+                            </tr>
+                            <tr style="background-color: #f8fafc;">
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;">
+                                    📝 Détails
+                                </td>
+                                <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px;" th:text="${details}">
+                                    AI Prediction success
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 20px; color: #64748b; font-size: 13px; font-weight: 600;">
+                                    📅 Date & Heure
+                                </td>
+                                <td style="padding: 12px 20px; color: #1e293b; font-size: 14px;" th:text="${date}">
+                                    2026-04-10 12:00:00
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Warning Message -->
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 24px;">
+                            <tr>
+                                <td style="padding: 16px 20px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
+                                    <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                                        <strong>🔒 Recommandation :</strong> Si vous ne reconnaissez pas cette activité,
+                                        veuillez changer votre mot de passe immédiatement et contacter l'administrateur du système.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding: 24px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+                        <p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 12px;">
+                            Ce message a été envoyé automatiquement par le système de sécurité PediaNephro.
+                        </p>
+                        <p style="margin: 0; color: #cbd5e1; font-size: 11px;">
+                            © 2026 PediaNephro - Plateforme de Néphrologie Pédiatrique
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
