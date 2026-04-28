@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dossier-medical
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dossier-medical
+  template:
+    metadata:
+      labels:
+        app: dossier-medical
+    spec:
+      containers:
+        - name: dossier-medical
+          image: mouhareb/dossier-medical:latest
+          ports:
+            - containerPort: 8010
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/dossier_medical_db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dossier-medical
+spec:
+  ports:
+    - port: 8010
+  selector:
+    app: dossier-medical
