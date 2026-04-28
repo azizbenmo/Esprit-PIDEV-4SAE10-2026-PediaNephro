@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag to deploy')
+    }
+
+    environment {
+        REGISTRY = "mouhareb"
+        NAMESPACE = "pedianephro"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
+            }
+        }
+
+        stage('Prepare Namespace') {
+            steps {
+                sh '''
+                kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Deploy Config Server') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/config-deployment.yaml -n $NAMESPACE
+                kubectl set image deployment/config-server config-server=$REGISTRY/config:$IMAGE_TAG -n $NAMESPACE
+                kubectl rollout status deployment/config-server -n $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Deploy Eureka Server') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/eureka-deployment.yaml -n $NAMESPACE
+                kubectl set image deployment/eureka-server eureka-server=$REGISTRY/eureka:$IMAGE_TAG -n $NAMESPACE
+                kubectl rollout status deployment/eureka-server -n $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Deploy Gateway') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/gateway-deployment.yaml -n $NAMESPACE
+                kubectl set image deployment/gateway gateway=$REGISTRY/gateway:$IMAGE_TAG -n $NAMESPACE
+                kubectl rollout status deployment/gateway -n $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Deploy Dossier Medical') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/dossier-medical-deployment.yaml -n $NAMESPACE
+                kubectl set image deployment/dossier-medical dossier-medical=$REGISTRY/dossier-medical:$IMAGE_TAG -n $NAMESPACE
+                kubectl rollout status deployment/dossier-medical -n $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Deploy Medical AI') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/medical-ai-deployment.yaml -n $NAMESPACE
+                kubectl set image deployment/medical-ai medical-ai=$REGISTRY/medical-ai:$IMAGE_TAG -n $NAMESPACE
+                kubectl rollout status deployment/medical-ai -n $NAMESPACE
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                kubectl get pods -n $NAMESPACE
+                kubectl get services -n $NAMESPACE
+                '''
+            }
+        }
+    }
+}
