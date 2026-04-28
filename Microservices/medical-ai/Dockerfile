@@ -1,13 +1,22 @@
-FROM python:3.10-slim
+# Stage 1: Build the Spring Boot app
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-COPY . .
 
-EXPOSE 8000
+# Stage 2: Run the app
+FROM eclipse-temurin:17-jre
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+WORKDIR /app
+
+EXPOSE 8012
+
+COPY --from=build /app/target/*.jar app.jar
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
