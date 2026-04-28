@@ -44,15 +44,26 @@ pipeline {
             }
         }
 
-       stage('SonarQube Analysis') {
+       
+
+        stage('SonarQube Analysis') {
     steps {
         withSonarQubeEnv('sonar-scanner') {
             withCredentials([string(credentialsId: 'sonar-secret', variable: 'SONAR_TOKEN')]) {
                 sh '''
-                cd config && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN && cd ..
-                cd eurekaserver && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN && cd ..
-                cd gateway && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN && cd ..
-                cd Microservices/dossieMedicale && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN && cd ../..
+                set -e
+
+                echo "Sonar analysis - Config"
+                (cd config && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
+
+                echo "Sonar analysis - Eureka"
+                (cd eurekaserver && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
+
+                echo "Sonar analysis - Gateway"
+                (cd gateway && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
+
+                echo "Sonar analysis - Dossier Medical"
+                (cd Microservices/dossieMedicale && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
                 '''
             }
         }
