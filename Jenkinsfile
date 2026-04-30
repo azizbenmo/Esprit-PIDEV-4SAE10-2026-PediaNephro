@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = "192.168.49.2:5000"
+        REGISTRY = "localhost:5000"
         TAG = "${BUILD_NUMBER}"
     }
 
@@ -10,13 +10,15 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
+                git branch: 'main',
+                url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
             }
         }
 
         stage('Build Java Services') {
             steps {
                 sh '''
+                set -e
                 (cd config && mvn clean install -DskipTests)
                 (cd eurekaserver && mvn clean install -DskipTests)
                 (cd gateway && mvn clean install -DskipTests)
@@ -28,6 +30,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh '''
+                set -e
                 (cd config && mvn test)
                 (cd eurekaserver && mvn test)
                 (cd gateway && mvn test)
@@ -41,6 +44,7 @@ pipeline {
                 withSonarQubeEnv('sonar-scanner') {
                     withCredentials([string(credentialsId: 'sonar-secret', variable: 'SONAR_TOKEN')]) {
                         sh '''
+                        set -e
                         (cd config && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
                         (cd eurekaserver && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
                         (cd gateway && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
@@ -54,6 +58,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh '''
+                set -e
                 docker build -t $REGISTRY/config:$TAG ./config
                 docker build -t $REGISTRY/eureka:$TAG ./eurekaserver
                 docker build -t $REGISTRY/gateway:$TAG ./gateway
@@ -66,6 +71,7 @@ pipeline {
         stage('Push Docker Images to Local Registry') {
             steps {
                 sh '''
+                set -e
                 docker push $REGISTRY/config:$TAG
                 docker push $REGISTRY/eureka:$TAG
                 docker push $REGISTRY/gateway:$TAG
