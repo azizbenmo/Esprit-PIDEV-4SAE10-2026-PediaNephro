@@ -63,7 +63,6 @@ pipeline {
                 docker build -t $REGISTRY/eureka:$TAG ./eurekaserver
                 docker build -t $REGISTRY/gateway:$TAG ./gateway
                 docker build -t $REGISTRY/dossier-medical:$TAG ./Microservices/dossieMedicale
-                docker build -t $REGISTRY/medical-ai:$TAG ./Microservices/medical-ai
                 '''
             }
         }
@@ -76,7 +75,6 @@ pipeline {
                 docker push $REGISTRY/eureka:$TAG
                 docker push $REGISTRY/gateway:$TAG
                 docker push $REGISTRY/dossier-medical:$TAG
-                docker push $REGISTRY/medical-ai:$TAG
                 '''
             }
         }
@@ -89,6 +87,5 @@ pipeline {
                 ]
             }
         }
-    
     }
 }
