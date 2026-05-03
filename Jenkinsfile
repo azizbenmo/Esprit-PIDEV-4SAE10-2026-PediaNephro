@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = "localhost:5000"
+        REGISTRY = "registry:5000"
         TAG = "${BUILD_NUMBER}"
     }
 
