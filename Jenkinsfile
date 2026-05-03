@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = "registry:5000"
+        DOCKERHUB_USER = "mouhareb"
         TAG = "${BUILD_NUMBER}"
     }
 
@@ -55,26 +55,36 @@ pipeline {
             }
         }
 
+        stage('Docker Hub Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
+                }
+            }
+        }
+
         stage('Build Docker Images') {
             steps {
                 sh '''
                 set -e
-                docker build -t $REGISTRY/config:$TAG ./config
-                docker build -t $REGISTRY/eureka:$TAG ./eurekaserver
-                docker build -t $REGISTRY/gateway:$TAG ./gateway
-                docker build -t $REGISTRY/dossier-medical:$TAG ./Microservices/dossieMedicale
+                docker build -t $DOCKERHUB_USER/pedianephro-config:$TAG ./config
+                docker build -t $DOCKERHUB_USER/pedianephro-eureka:$TAG ./eurekaserver
+                docker build -t $DOCKERHUB_USER/pedianephro-gateway:$TAG ./gateway
+                docker build -t $DOCKERHUB_USER/pedianephro-dossier-medical:$TAG ./Microservices/dossieMedicale
                 '''
             }
         }
 
-        stage('Push Docker Images to Local Registry') {
+        stage('Push Docker Images to Docker Hub') {
             steps {
                 sh '''
                 set -e
-                docker push $REGISTRY/config:$TAG
-                docker push $REGISTRY/eureka:$TAG
-                docker push $REGISTRY/gateway:$TAG
-                docker push $REGISTRY/dossier-medical:$TAG
+                docker push $DOCKERHUB_USER/pedianephro-config:$TAG
+                docker push $DOCKERHUB_USER/pedianephro-eureka:$TAG
+                docker push $DOCKERHUB_USER/pedianephro-gateway:$TAG
+                docker push $DOCKERHUB_USER/pedianephro-dossier-medical:$TAG
                 '''
             }
         }
