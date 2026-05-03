@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY = "localhost:5000"
+        REGISTRY = "registry:5000"
         NAMESPACE = "pedianephro"
         KUBECONFIG = "/root/.kube/config"
     }
@@ -78,17 +78,6 @@ pipeline {
                 kubectl apply -f k8s/dossier-medical-deployment.yaml -n $NAMESPACE
                 kubectl set image deployment/dossier-medical dossier-medical=$REGISTRY/dossier-medical:$IMAGE_TAG -n $NAMESPACE
                 kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=180s
-                '''
-            }
-        }
-
-        stage('Deploy Medical AI') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/medical-ai-deployment.yaml -n $NAMESPACE
-                kubectl set image deployment/medical-ai medical-ai=$REGISTRY/medical-ai:$IMAGE_TAG -n $NAMESPACE
-                kubectl rollout status deployment/medical-ai -n $NAMESPACE --timeout=180s
                 '''
             }
         }
