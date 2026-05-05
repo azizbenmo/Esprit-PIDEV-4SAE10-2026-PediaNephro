@@ -6,17 +6,12 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_USER = "mouhareb"
+        REGISTRY = "mouhareb"
         NAMESPACE = "pedianephro"
-<<<<<<< HEAD
-        KUBECONFIG = "/var/jenkins_home/.kube/config"
-=======
         KUBECONFIG = "/root/.kube/config"
->>>>>>> b5f2cb8 (add helm deployment for pedianephro)
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -28,69 +23,11 @@ pipeline {
             steps {
                 sh '''
                 set -e
-<<<<<<< HEAD
-                kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
-                '''
-            }
-        }
-
-        stage('Deploy MySQL') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/mysql-deployment.yaml -n $NAMESPACE
-                '''
-            }
-        }
-
-        stage('Deploy Config Server') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/config-deployment.yaml -n $NAMESPACE
-                kubectl set image deployment/config-server config-server=$DOCKERHUB_USER/pedianephro-config:$IMAGE_TAG -n $NAMESPACE
-                kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=180s
-                '''
-            }
-        }
-
-        stage('Deploy Eureka Server') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/eureka-deployment.yaml -n $NAMESPACE
-                kubectl set image deployment/eureka-server eureka-server=$DOCKERHUB_USER/pedianephro-eureka:$IMAGE_TAG -n $NAMESPACE
-                kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=180s
-                '''
-            }
-        }
-
-        stage('Deploy Gateway') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/gateway-deployment.yaml -n $NAMESPACE
-                kubectl set image deployment/gateway gateway=$DOCKERHUB_USER/pedianephro-gateway:$IMAGE_TAG -n $NAMESPACE
-                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=180s
-                '''
-            }
-        }
-
-        stage('Deploy Dossier Medical') {
-            steps {
-                sh '''
-                set -e
-                kubectl apply -f k8s/dossier-medical-deployment.yaml -n $NAMESPACE
-                kubectl set image deployment/dossier-medical dossier-medical=$DOCKERHUB_USER/pedianephro-dossier-medical:$IMAGE_TAG -n $NAMESPACE
-                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=180s
-=======
-
                 helm upgrade --install pedianephro ./helm/pedianephro \
                   --namespace $NAMESPACE \
                   --create-namespace \
                   --set image.registry=$REGISTRY \
                   --set image.tag=$IMAGE_TAG
->>>>>>> b5f2cb8 (add helm deployment for pedianephro)
                 '''
             }
         }
