@@ -8,7 +8,11 @@ pipeline {
     environment {
         DOCKERHUB_USER = "mouhareb"
         NAMESPACE = "pedianephro"
+<<<<<<< HEAD
         KUBECONFIG = "/var/jenkins_home/.kube/config"
+=======
+        KUBECONFIG = "/root/.kube/config"
+>>>>>>> b5f2cb8 (add helm deployment for pedianephro)
     }
 
     stages {
@@ -20,10 +24,11 @@ pipeline {
             }
         }
 
-        stage('Prepare Namespace') {
+        stage('Deploy With Helm') {
             steps {
                 sh '''
                 set -e
+<<<<<<< HEAD
                 kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
                 '''
             }
@@ -78,6 +83,14 @@ pipeline {
                 kubectl apply -f k8s/dossier-medical-deployment.yaml -n $NAMESPACE
                 kubectl set image deployment/dossier-medical dossier-medical=$DOCKERHUB_USER/pedianephro-dossier-medical:$IMAGE_TAG -n $NAMESPACE
                 kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=180s
+=======
+
+                helm upgrade --install pedianephro ./helm/pedianephro \
+                  --namespace $NAMESPACE \
+                  --create-namespace \
+                  --set image.registry=$REGISTRY \
+                  --set image.tag=$IMAGE_TAG
+>>>>>>> b5f2cb8 (add helm deployment for pedianephro)
                 '''
             }
         }
@@ -87,6 +100,7 @@ pipeline {
                 sh '''
                 kubectl get pods -n $NAMESPACE
                 kubectl get services -n $NAMESPACE
+                helm list -n $NAMESPACE
                 '''
             }
         }

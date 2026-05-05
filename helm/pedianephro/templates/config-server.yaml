@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: config-server
+          image: "{{ .Values.image.registry }}/{{ .Values.config.image }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.config.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: config-server
+  ports:
+    - port: {{ .Values.config.port }}
+      targetPort: {{ .Values.config.port }}

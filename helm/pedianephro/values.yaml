@@ -1,0 +1,35 @@
+namespace: pedianephro
+
+image:
+  registry: mouhareb
+  tag: latest
+  pullPolicy: Always
+
+mysql:
+  image: mysql:8.0
+  database: dossier_medical_db
+  user: root
+  password: root
+  port: 3306
+
+config:
+  name: config-server
+  image: config
+  port: 8070
+
+eureka:
+  name: eureka-server
+  image: eureka
+  port: 8761
+
+gateway:
+  name: gateway
+  image: gateway
+  port: 8900
+  nodePort: 30090
+
+dossier:
+  name: dossier-medical
+  image: dossier-medical
+  port: 8012
+  nodePort: 30012

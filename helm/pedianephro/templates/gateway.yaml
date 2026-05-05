@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: "{{ .Values.image.registry }}/{{ .Values.gateway.image }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gateway.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: {{ .Values.namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: gateway
+  ports:
+    - port: {{ .Values.gateway.port }}
+      targetPort: {{ .Values.gateway.port }}
+      nodePort: {{ .Values.gateway.nodePort }}
