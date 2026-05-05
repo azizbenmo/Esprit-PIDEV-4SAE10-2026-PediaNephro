@@ -8,8 +8,8 @@ pipeline {
     environment {
         REGISTRY = "mouhareb"
         NAMESPACE = "pedianephro"
-        KUBECONFIG = "/root/.kube/config"
-    }
+        KUBECONFIG = "/var/jenkins_home/.kube/config"
+       }
 
     stages {
         stage('Checkout') {
