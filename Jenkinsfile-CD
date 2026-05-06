@@ -9,13 +9,23 @@ pipeline {
         REGISTRY = "mouhareb"
         NAMESPACE = "pedianephro"
         KUBECONFIG = "/var/jenkins_home/.kube/config"
-       }
+    }
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
+                    url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
+            }
+        }
+
+        stage('Check Kubernetes Access') {
+            steps {
+                sh '''
+                set -e
+                echo "Testing Kubernetes access..."
+                kubectl get nodes
+                '''
             }
         }
 
@@ -35,6 +45,7 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 sh '''
+                set -e
                 kubectl get pods -n $NAMESPACE
                 kubectl get services -n $NAMESPACE
                 helm list -n $NAMESPACE
