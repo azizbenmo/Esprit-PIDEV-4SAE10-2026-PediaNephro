@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_USER = "mouhareb"
         TAG = "${BUILD_NUMBER}"
+        SONAR_HOST_URL = "http://sonarqube:9000"
     }
 
     stages {
@@ -77,7 +78,7 @@ pipeline {
                 sh '''
                 set -e
                 echo "========== Checking SonarQube access =========="
-                curl -I http://sonarqube:9000
+                curl -I $SONAR_HOST_URL
                 '''
             }
         }
@@ -90,13 +91,18 @@ pipeline {
                         set -e
 
                         echo "========== SonarQube Config Server =========="
-                        (cd config && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
+                        (cd config && mvn sonar:sonar \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.token=$SONAR_TOKEN)
 
                         echo "========== SonarQube Eureka Server =========="
-                        (cd eurekaserver && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
+                        (cd eurekaserver && mvn sonar:sonar \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.token=$SONAR_TOKEN)
 
                         echo "========== SonarQube Gateway =========="
                         (cd gateway && mvn sonar:sonar \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
                           -Dsonar.token=$SONAR_TOKEN \
                           -Dspring.cloud.config.enabled=false \
                           -Dspring.cloud.discovery.enabled=false \
@@ -104,6 +110,7 @@ pipeline {
 
                         echo "========== SonarQube Dossier Medical Service =========="
                         (cd Microservices/dossieMedicale && mvn sonar:sonar \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
                           -Dsonar.token=$SONAR_TOKEN \
                           -Dspring.cloud.config.enabled=false \
                           -Dspring.cloud.discovery.enabled=false \
