@@ -8,10 +8,12 @@ pipeline {
     environment {
         REGISTRY = "mouhareb"
         NAMESPACE = "pedianephro"
+        RELEASE_NAME = "pedianephro"
         KUBECONFIG = "/var/jenkins_home/.kube/config"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -23,8 +25,19 @@ pipeline {
             steps {
                 sh '''
                 set -e
-                echo "Testing Kubernetes access..."
+                echo "========== Testing Kubernetes access =========="
                 kubectl get nodes
+                kubectl get pods -A
+                '''
+            }
+        }
+
+        stage('Check Helm') {
+            steps {
+                sh '''
+                set -e
+                echo "========== Checking Helm =========="
+                helm version
                 '''
             }
         }
@@ -33,7 +46,13 @@ pipeline {
             steps {
                 sh '''
                 set -e
-                helm upgrade --install pedianephro ./helm/pedianephro \
+
+                echo "========== Deploying PediaNephro with Helm =========="
+                echo "Registry: $REGISTRY"
+                echo "Image tag: $IMAGE_TAG"
+                echo "Namespace: $NAMESPACE"
+
+                helm upgrade --install $RELEASE_NAME ./helm/pedianephro \
                   --namespace $NAMESPACE \
                   --create-namespace \
                   --set image.registry=$REGISTRY \
@@ -42,15 +61,58 @@ pipeline {
             }
         }
 
+        stage('Wait For Deployment') {
+            steps {
+                sh '''
+                set -e
+
+                echo "========== Waiting for deployments =========="
+
+                kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=180s || true
+                kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=180s || true
+                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=180s || true
+                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=180s || true
+                kubectl rollout status deployment/mysql -n $NAMESPACE --timeout=180s || true
+                '''
+            }
+        }
+
         stage('Verify Deployment') {
             steps {
                 sh '''
                 set -e
-                kubectl get pods -n $NAMESPACE
+
+                echo "========== Pods =========="
+                kubectl get pods -n $NAMESPACE -o wide
+
+                echo "========== Services =========="
                 kubectl get services -n $NAMESPACE
+
+                echo "========== Helm Releases =========="
                 helm list -n $NAMESPACE
+
+                echo "========== Deployment Status =========="
+                kubectl get deployments -n $NAMESPACE
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "CD Pipeline completed successfully. PediaNephro deployed with Helm."
+        }
+
+        failure {
+            echo "CD Pipeline failed. Check Kubernetes, Helm, kubeconfig, and pod logs."
+        }
+
+        always {
+            sh '''
+            echo "========== Final Kubernetes status =========="
+            kubectl get pods -n $NAMESPACE || true
+            kubectl get svc -n $NAMESPACE || true
+            '''
         }
     }
 }
