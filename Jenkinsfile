@@ -84,42 +84,40 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonar-scanner') {
-                    withCredentials([string(credentialsId: 'sonar-secret', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                        set -e
+    steps {
+        withCredentials([string(credentialsId: 'sonar-secret', variable: 'SONAR_TOKEN')]) {
+            sh '''
+            set -e
 
-                        echo "========== SonarQube Config Server =========="
-                        (cd config && mvn sonar:sonar \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.token=$SONAR_TOKEN)
+            echo "========== SonarQube Config Server =========="
+            (cd config && mvn sonar:sonar \
+              -Dsonar.host.url=http://sonarqube:9000 \
+              -Dsonar.token=$SONAR_TOKEN)
 
-                        echo "========== SonarQube Eureka Server =========="
-                        (cd eurekaserver && mvn sonar:sonar \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.token=$SONAR_TOKEN)
+            echo "========== SonarQube Eureka Server =========="
+            (cd eurekaserver && mvn sonar:sonar \
+              -Dsonar.host.url=http://sonarqube:9000 \
+              -Dsonar.token=$SONAR_TOKEN)
 
-                        echo "========== SonarQube Gateway =========="
-                        (cd gateway && mvn sonar:sonar \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.token=$SONAR_TOKEN \
-                          -Dspring.cloud.config.enabled=false \
-                          -Dspring.cloud.discovery.enabled=false \
-                          -Deureka.client.enabled=false)
+            echo "========== SonarQube Gateway =========="
+            (cd gateway && mvn sonar:sonar \
+              -Dsonar.host.url=http://sonarqube:9000 \
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dspring.cloud.config.enabled=false \
+              -Dspring.cloud.discovery.enabled=false \
+              -Deureka.client.enabled=false)
 
-                        echo "========== SonarQube Dossier Medical Service =========="
-                        (cd Microservices/dossieMedicale && mvn sonar:sonar \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.token=$SONAR_TOKEN \
-                          -Dspring.cloud.config.enabled=false \
-                          -Dspring.cloud.discovery.enabled=false \
-                          -Deureka.client.enabled=false)
-                        '''
-                    }
-                }
-            }
+            echo "========== SonarQube Dossier Medical Service =========="
+            (cd Microservices/dossieMedicale && mvn sonar:sonar \
+              -Dsonar.host.url=http://sonarqube:9000 \
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dspring.cloud.config.enabled=false \
+              -Dspring.cloud.discovery.enabled=false \
+              -Deureka.client.enabled=false)
+            '''
         }
+    }
+}
 
         stage('Check Docker Access') {
             steps {
