@@ -188,6 +188,15 @@ pipeline {
                 '''
             }
         }
+
+        stage('Trigger CD Pipeline') {
+            steps {
+                build job: 'docier-medical-CD',
+                    parameters: [
+                        string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
+                    ]
+            }
+        }
     }
 
     post {
@@ -207,11 +216,11 @@ pipeline {
         }
 
         success {
-            echo "CI Pipeline completed successfully. Build, tests, SonarQube analysis and Docker push are OK."
+            echo "CI/CD Pipeline completed successfully. Build, tests, SonarQube analysis, Docker push and CD trigger are OK."
         }
 
         failure {
-            echo "CI Pipeline failed. Check logs, tests, SonarQube or Docker access."
+            echo "CI/CD Pipeline failed. Check logs, tests, SonarQube, Docker access or CD deployment."
         }
     }
 }
