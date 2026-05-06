@@ -56,7 +56,8 @@ pipeline {
                   --namespace $NAMESPACE \
                   --create-namespace \
                   --set image.registry=$REGISTRY \
-                  --set image.tag=$IMAGE_TAG
+                  --set image.tag=$IMAGE_TAG \
+                  --timeout 5m
                 '''
             }
         }
@@ -68,11 +69,11 @@ pipeline {
 
                 echo "========== Waiting for deployments =========="
 
-                kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=180s || true
-                kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=180s || true
-                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=180s || true
-                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=180s || true
-                kubectl rollout status deployment/mysql -n $NAMESPACE --timeout=180s || true
+                kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=240s
+                kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=240s
+                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=240s
+                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=240s
+                kubectl rollout status deployment/mysql -n $NAMESPACE --timeout=240s
                 '''
             }
         }
@@ -104,14 +105,28 @@ pipeline {
         }
 
         failure {
-            echo "CD Pipeline failed. Check Kubernetes, Helm, kubeconfig, and pod logs."
+            echo "CD Pipeline failed. Check Kubernetes, Helm, kubeconfig, pod status and logs."
         }
 
         always {
             sh '''
+            set +e
+
             echo "========== Final Kubernetes status =========="
-            kubectl get pods -n $NAMESPACE || true
+            kubectl get nodes || true
+            kubectl get pods -n $NAMESPACE -o wide || true
             kubectl get svc -n $NAMESPACE || true
+            kubectl get deployments -n $NAMESPACE || true
+            helm list -n $NAMESPACE || true
+
+            echo "========== Events =========="
+            kubectl get events -n $NAMESPACE --sort-by=.metadata.creationTimestamp | tail -80 || true
+
+            echo "========== Gateway logs =========="
+            kubectl logs -n $NAMESPACE deployment/gateway --tail=100 || true
+
+            echo "========== Dossier Medical logs =========="
+            kubectl logs -n $NAMESPACE deployment/dossier-medical --tail=100 || true
             '''
         }
     }
