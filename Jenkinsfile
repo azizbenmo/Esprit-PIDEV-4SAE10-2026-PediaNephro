@@ -20,70 +20,43 @@ pipeline {
                 sh '''
                 set -e
 
-                echo "Building Config Server..."
-                cd config
-                mvn clean install -DskipTests
-                cd ..
+                echo "========== Build Config Server =========="
+                (cd config && mvn clean install -DskipTests)
 
-                echo "Building Eureka Server..."
-                cd eurekaserver
-                mvn clean install -DskipTests
-                cd ..
+                echo "========== Build Eureka Server =========="
+                (cd eurekaserver && mvn clean install -DskipTests)
 
-                echo "Building Gateway..."
-                cd gateway
-                mvn clean install -DskipTests
-                cd ..
+                echo "========== Build Gateway =========="
+                (cd gateway && mvn clean install -DskipTests)
 
-                echo "Building Dossier Medical Service..."
-                cd Microservices/dossieMedicale
-                mvn clean install -DskipTests
-                cd ../../..
+                echo "========== Build Dossier Medical Service =========="
+                (cd Microservices/dossieMedicale && mvn clean install -DskipTests)
                 '''
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Unit Tests') {
             steps {
                 sh '''
                 set -e
 
-                echo "Running tests for Config Server..."
-                cd config
-                mvn test
-                cd ..
+                echo "========== Tests Config Server =========="
+                (cd config && mvn test)
 
-                echo "Running tests for Eureka Server..."
-                cd eurekaserver
-                mvn test
-                cd ..
+                echo "========== Tests Eureka Server =========="
+                (cd eurekaserver && mvn test)
 
-                echo "Running tests for Gateway..."
-                cd gateway
-                mvn test \
+                echo "========== Tests Gateway =========="
+                (cd gateway && mvn test \
                   -Dspring.cloud.config.enabled=false \
                   -Dspring.cloud.discovery.enabled=false \
-                  -Deureka.client.enabled=false
-                cd ..
+                  -Deureka.client.enabled=false)
 
-                echo "Running tests for Dossier Medical Service..."
-                cd Microservices/dossieMedicale
-                mvn test \
+                echo "========== Tests Dossier Medical Service =========="
+                (cd Microservices/dossieMedicale && mvn test \
                   -Dspring.cloud.config.enabled=false \
                   -Dspring.cloud.discovery.enabled=false \
-                  -Deureka.client.enabled=false
-                cd ../../..
-                '''
-            }
-        }
-
-        stage('Publish Unit Test Reports') {
-            steps {
-                junit allowEmptyResults: true, testResults: '''
-                    config/target/surefire-reports/*.xml,
-                    eurekaserver/target/surefire-reports/*.xml,
-                    gateway/target/surefire-reports/*.xml,
-                    Microservices/dossieMedicale/target/surefire-reports/*.xml
+                  -Deureka.client.enabled=false)
                 '''
             }
         }
@@ -95,33 +68,25 @@ pipeline {
                         sh '''
                         set -e
 
-                        echo "SonarQube analysis for Config Server..."
-                        cd config
-                        mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN
-                        cd ..
+                        echo "========== SonarQube Config Server =========="
+                        (cd config && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
 
-                        echo "SonarQube analysis for Eureka Server..."
-                        cd eurekaserver
-                        mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN
-                        cd ..
+                        echo "========== SonarQube Eureka Server =========="
+                        (cd eurekaserver && mvn sonar:sonar -Dsonar.token=$SONAR_TOKEN)
 
-                        echo "SonarQube analysis for Gateway..."
-                        cd gateway
-                        mvn sonar:sonar \
+                        echo "========== SonarQube Gateway =========="
+                        (cd gateway && mvn sonar:sonar \
                           -Dsonar.token=$SONAR_TOKEN \
                           -Dspring.cloud.config.enabled=false \
                           -Dspring.cloud.discovery.enabled=false \
-                          -Deureka.client.enabled=false
-                        cd ..
+                          -Deureka.client.enabled=false)
 
-                        echo "SonarQube analysis for Dossier Medical Service..."
-                        cd Microservices/dossieMedicale
-                        mvn sonar:sonar \
+                        echo "========== SonarQube Dossier Medical Service =========="
+                        (cd Microservices/dossieMedicale && mvn sonar:sonar \
                           -Dsonar.token=$SONAR_TOKEN \
                           -Dspring.cloud.config.enabled=false \
                           -Dspring.cloud.discovery.enabled=false \
-                          -Deureka.client.enabled=false
-                        cd ../../..
+                          -Deureka.client.enabled=false)
                         '''
                     }
                 }
@@ -132,7 +97,7 @@ pipeline {
             steps {
                 sh '''
                 set -e
-                echo "Checking Docker access from Jenkins..."
+                echo "========== Checking Docker access from Jenkins =========="
                 docker --version
                 docker ps
                 '''
@@ -141,9 +106,14 @@ pipeline {
 
         stage('Docker Hub Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
                     sh '''
                     set -e
+                    echo "========== Docker Hub Login =========="
                     echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
@@ -155,19 +125,19 @@ pipeline {
                 sh '''
                 set -e
 
-                echo "Building Docker image: config"
+                echo "========== Build Docker image: config =========="
                 docker build -t $DOCKERHUB_USER/config:$TAG ./config
                 docker tag $DOCKERHUB_USER/config:$TAG $DOCKERHUB_USER/config:latest
 
-                echo "Building Docker image: eureka"
+                echo "========== Build Docker image: eureka =========="
                 docker build -t $DOCKERHUB_USER/eureka:$TAG ./eurekaserver
                 docker tag $DOCKERHUB_USER/eureka:$TAG $DOCKERHUB_USER/eureka:latest
 
-                echo "Building Docker image: gateway"
+                echo "========== Build Docker image: gateway =========="
                 docker build -t $DOCKERHUB_USER/gateway:$TAG ./gateway
                 docker tag $DOCKERHUB_USER/gateway:$TAG $DOCKERHUB_USER/gateway:latest
 
-                echo "Building Docker image: dossier-medical"
+                echo "========== Build Docker image: dossier-medical =========="
                 docker build -t $DOCKERHUB_USER/dossier-medical:$TAG ./Microservices/dossieMedicale
                 docker tag $DOCKERHUB_USER/dossier-medical:$TAG $DOCKERHUB_USER/dossier-medical:latest
                 '''
@@ -179,15 +149,19 @@ pipeline {
                 sh '''
                 set -e
 
+                echo "========== Push config =========="
                 docker push $DOCKERHUB_USER/config:$TAG
                 docker push $DOCKERHUB_USER/config:latest
 
+                echo "========== Push eureka =========="
                 docker push $DOCKERHUB_USER/eureka:$TAG
                 docker push $DOCKERHUB_USER/eureka:latest
 
+                echo "========== Push gateway =========="
                 docker push $DOCKERHUB_USER/gateway:$TAG
                 docker push $DOCKERHUB_USER/gateway:latest
 
+                echo "========== Push dossier-medical =========="
                 docker push $DOCKERHUB_USER/dossier-medical:$TAG
                 docker push $DOCKERHUB_USER/dossier-medical:latest
                 '''
@@ -206,6 +180,8 @@ pipeline {
 
     post {
         always {
+            echo "========== Publishing Unit Test Reports =========="
+
             junit allowEmptyResults: true, testResults: '''
                 config/target/surefire-reports/*.xml,
                 eurekaserver/target/surefire-reports/*.xml,
@@ -219,11 +195,11 @@ pipeline {
         }
 
         success {
-            echo "CI Pipeline completed successfully. Unit tests published, Docker images pushed and CD pipeline triggered."
+            echo "CI Pipeline completed successfully. Tests published, Docker images pushed, and CD pipeline triggered."
         }
 
         failure {
-            echo "CI Pipeline failed. Check logs and unit test reports."
+            echo "CI Pipeline failed. Check logs and Jenkins test reports."
         }
     }
 }
