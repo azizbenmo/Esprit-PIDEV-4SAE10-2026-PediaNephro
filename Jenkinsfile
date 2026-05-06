@@ -77,6 +77,17 @@ pipeline {
             }
         }
 
+        stage('Publish Unit Test Reports') {
+            steps {
+                junit allowEmptyResults: true, testResults: '''
+                    config/target/surefire-reports/*.xml,
+                    eurekaserver/target/surefire-reports/*.xml,
+                    gateway/target/surefire-reports/*.xml,
+                    Microservices/dossieMedicale/target/surefire-reports/*.xml
+                '''
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-scanner') {
@@ -194,18 +205,25 @@ pipeline {
     }
 
     post {
-        success {
-            echo "CI Pipeline completed successfully. Docker images pushed and CD pipeline triggered."
-        }
-
-        failure {
-            echo "CI Pipeline failed. Check the logs above."
-        }
-
         always {
+            junit allowEmptyResults: true, testResults: '''
+                config/target/surefire-reports/*.xml,
+                eurekaserver/target/surefire-reports/*.xml,
+                gateway/target/surefire-reports/*.xml,
+                Microservices/dossieMedicale/target/surefire-reports/*.xml
+            '''
+
             sh '''
             docker logout || true
             '''
+        }
+
+        success {
+            echo "CI Pipeline completed successfully. Unit tests published, Docker images pushed and CD pipeline triggered."
+        }
+
+        failure {
+            echo "CI Pipeline failed. Check logs and unit test reports."
         }
     }
 }
