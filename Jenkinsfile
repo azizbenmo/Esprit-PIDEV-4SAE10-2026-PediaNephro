@@ -5,6 +5,7 @@ pipeline {
         DOCKERHUB_USER = "mouhareb"
         TAG = "${BUILD_NUMBER}"
         SONARQUBE_ENV = "sonar-scanner"
+        CD_WEBHOOK_URL = "http://localhost:8080/generic-webhook-trigger/invoke?token=pedia-cd-token"
     }
 
     stages {
@@ -197,16 +198,19 @@ pipeline {
             }
         }
 
-       stage('Trigger CD Pipeline') {
-    steps {
-        build job: 'docier-medical-CD',
-            parameters: [
-                string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
-            ],
-            propagate: true,
-            wait: true
-    }
-}
+        stage('Trigger CD Pipeline ') {
+            steps {
+                sh '''
+                set -e
+                echo "========== Trigger CD Pipeline =========="
+                echo "IMAGE_TAG envoyé à la CD: ${BUILD_NUMBER}"
+
+                curl -X POST "$CD_WEBHOOK_URL" \
+                  -H "Content-Type: application/json" \
+                  -d "{\\"IMAGE_TAG\\":\\"${BUILD_NUMBER}\\"}"
+                '''
+            }
+        }
     }
 
     post {
@@ -226,11 +230,11 @@ pipeline {
         }
 
         success {
-            echo "CI Pipeline completed successfully. Build, tests, SonarQube analysis, Docker push and CD trigger are OK."
+            echo "CI Pipeline completed successfully. Build, tests, SonarQube analysis, Docker push and CD webhook trigger are OK."
         }
 
         failure {
-            echo "CI Pipeline failed. Check logs, tests, SonarQube, Docker access or CD deployment."
+            echo "CI Pipeline failed. Check logs, tests, SonarQube, Docker access or CD webhook deployment."
         }
     }
 }
