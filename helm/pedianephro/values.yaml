@@ -1,5 +1,4 @@
 namespace: pedianephro
-
 image:
   registry: mouhareb
   tag: latest
@@ -33,3 +32,17 @@ dossier:
   image: dossier-medical
   port: 8012
   nodePort: 30012
+
+# ✅ AJOUT : Resources pour activer les métriques CPU/Memory dans Grafana
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ✅ AJOUT : Labels pour que Prometheus détecte les services
+monitoring:
+  enabled: true
+  label: "true"
