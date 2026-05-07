@@ -197,14 +197,16 @@ pipeline {
             }
         }
 
-        stage('Trigger CD Pipeline') {
-            steps {
-                build job: 'docier-medical-CD',
-                    parameters: [
-                        string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
-                    ]
-            }
-        }
+       stage('Trigger CD Pipeline') {
+    steps {
+        build job: 'docier-medical-CD',
+            parameters: [
+                string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
+            ],
+            propagate: true,
+            wait: true
+    }
+}
     }
 
     post {
