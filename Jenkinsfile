@@ -199,7 +199,7 @@ pipeline {
 
         stage('Trigger CD Pipeline') {
             steps {
-                build job: 'PediaNephro-CD',
+                build job: 'docier-medical-CD',
                     parameters: [
                         string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
                     ]
