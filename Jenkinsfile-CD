@@ -45,6 +45,23 @@ pipeline {
             }
         }
 
+        stage('Validate Image Tag') {
+            steps {
+                sh '''
+                set -e
+
+                echo "========== Validating IMAGE_TAG =========="
+                echo "IMAGE_TAG=$IMAGE_TAG"
+
+                if [ -z "$IMAGE_TAG" ]; then
+                  echo "ERROR: IMAGE_TAG is empty."
+                  echo "The CI must trigger this CD job with IMAGE_TAG=BUILD_NUMBER."
+                  exit 1
+                fi
+                '''
+            }
+        }
+
         stage('Deploy With Helm') {
             steps {
                 sh '''
@@ -147,7 +164,7 @@ pipeline {
         }
 
         failure {
-            echo "CD Pipeline failed. Check Kubernetes, Helm, kubeconfig, pod status and logs."
+            echo "CD Pipeline failed. Check Kubernetes, Helm, kubeconfig, image tag, pod status and logs."
         }
 
         always {
