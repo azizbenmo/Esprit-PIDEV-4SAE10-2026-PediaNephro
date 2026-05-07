@@ -32,11 +32,15 @@ kind: Service
 metadata:
   name: dossier-medical
   namespace: {{ .Values.namespace }}
+  labels:
+    app: dossier-medical
+    monitored: "true"
 spec:
   type: NodePort
   selector:
     app: dossier-medical
   ports:
-    - port: {{ .Values.dossier.port }}
+    - name: http
+      port: {{ .Values.dossier.port }}
       targetPort: {{ .Values.dossier.port }}
       nodePort: {{ .Values.dossier.nodePort }}
