@@ -25,6 +25,7 @@ pipeline {
             steps {
                 sh '''
                 set -e
+
                 echo "========== Testing Kubernetes access =========="
                 kubectl get nodes
                 kubectl get pods -A
@@ -36,6 +37,7 @@ pipeline {
             steps {
                 sh '''
                 set -e
+
                 echo "========== Checking Helm =========="
                 helm version
                 '''
@@ -70,11 +72,20 @@ pipeline {
 
                 echo "========== Waiting for deployments =========="
 
+                echo "========== Waiting Config Server =========="
                 kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=240s
+
+                echo "========== Waiting Eureka Server =========="
                 kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=240s
-                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=240s
-                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=240s
+
+                echo "========== Waiting MySQL =========="
                 kubectl rollout status deployment/mysql -n $NAMESPACE --timeout=240s
+
+                echo "========== Waiting Gateway =========="
+                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=240s
+
+                echo "========== Waiting Dossier Medical =========="
+                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=240s
                 '''
             }
         }
@@ -95,6 +106,12 @@ pipeline {
 
                 echo "========== Deployment Status =========="
                 kubectl get deployments -n $NAMESPACE
+
+                echo "========== PVC Status =========="
+                kubectl get pvc -n $NAMESPACE || true
+
+                echo "========== PV Status =========="
+                kubectl get pv || true
                 '''
             }
         }
@@ -115,19 +132,30 @@ pipeline {
 
             echo "========== Final Kubernetes status =========="
             kubectl get nodes || true
+
+            echo "========== Final Pods =========="
             kubectl get pods -n $NAMESPACE -o wide || true
+
+            echo "========== Final Services =========="
             kubectl get svc -n $NAMESPACE || true
+
+            echo "========== Final Deployments =========="
             kubectl get deployments -n $NAMESPACE || true
+
+            echo "========== Final PVC =========="
+            kubectl get pvc -n $NAMESPACE || true
+
+            echo "========== Final PV =========="
+            kubectl get pv || true
+
+            echo "========== Final Helm Releases =========="
             helm list -n $NAMESPACE || true
 
             echo "========== Events =========="
             kubectl get events -n $NAMESPACE --sort-by=.metadata.creationTimestamp | tail -80 || true
 
-            echo "========== Gateway logs =========="
-            kubectl logs -n $NAMESPACE deployment/gateway --tail=100 || true
-
-            echo "========== Dossier Medical logs =========="
-            kubectl logs -n $NAMESPACE deployment/dossier-medical --tail=100 || true
+            echo "========== MySQL logs =========="
+            kubectl logs -n $NAMESPACE deployment/mysql --tail=100 || true
 
             echo "========== Config Server logs =========="
             kubectl logs -n $NAMESPACE deployment/config-server --tail=100 || true
@@ -135,8 +163,11 @@ pipeline {
             echo "========== Eureka logs =========="
             kubectl logs -n $NAMESPACE deployment/eureka-server --tail=100 || true
 
-            echo "========== MySQL logs =========="
-            kubectl logs -n $NAMESPACE deployment/mysql --tail=100 || true
+            echo "========== Gateway logs =========="
+            kubectl logs -n $NAMESPACE deployment/gateway --tail=100 || true
+
+            echo "========== Dossier Medical logs =========="
+            kubectl logs -n $NAMESPACE deployment/dossier-medical --tail=100 || true
             '''
         }
     }
