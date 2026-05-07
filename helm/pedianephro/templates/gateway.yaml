@@ -25,11 +25,15 @@ kind: Service
 metadata:
   name: gateway
   namespace: {{ .Values.namespace }}
+  labels:
+    app: gateway
+    monitored: "true"
 spec:
   type: NodePort
   selector:
     app: gateway
   ports:
-    - port: {{ .Values.gateway.port }}
+    - name: http
+      port: {{ .Values.gateway.port }}
       targetPort: {{ .Values.gateway.port }}
       nodePort: {{ .Values.gateway.nodePort }}
