@@ -25,9 +25,13 @@ kind: Service
 metadata:
   name: eureka-server
   namespace: {{ .Values.namespace }}
+  labels:
+    app: eureka-server
+    monitored: "true"
 spec:
   selector:
     app: eureka-server
   ports:
-    - port: {{ .Values.eureka.port }}
+    - name: http
+      port: {{ .Values.eureka.port }}
       targetPort: {{ .Values.eureka.port }}
