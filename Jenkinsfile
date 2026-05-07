@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_USER = "mouhareb"
         TAG = "${BUILD_NUMBER}"
-        SONAR_HOST_URL = "http://sonarqube:9000"
+        SONARQUBE_ENV = "sonar-scanner"
     }
 
     stages {
@@ -12,6 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
+                    credentialsId: 'github-token',
                     url: 'https://github.com/azizbenmo/Esprit-PIDEV-4SAE10-2026-PediaNephro.git'
             }
         }
@@ -75,49 +76,51 @@ pipeline {
 
         stage('Check SonarQube Access') {
             steps {
-                sh '''
-                set -e
-                echo "========== Checking SonarQube access =========="
-                curl -I $SONAR_HOST_URL
-                '''
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh '''
+                    set -e
+                    echo "========== Checking SonarQube access =========="
+                    curl -I $SONAR_HOST_URL
+                    '''
+                }
             }
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        withCredentials([string(credentialsId: 'sonar-secret', variable: 'SONAR_TOKEN')]) {
-            sh '''
-            set -e
+            steps {
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh '''
+                    set -e
 
-            echo "========== SonarQube Config Server =========="
-            (cd config && mvn sonar:sonar \
-              -Dsonar.host.url=http://sonarqube:9000 \
-              -Dsonar.token=$SONAR_TOKEN)
+                    echo "========== SonarQube Config Server =========="
+                    (cd config && mvn sonar:sonar \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.token=$SONAR_AUTH_TOKEN)
 
-            echo "========== SonarQube Eureka Server =========="
-            (cd eurekaserver && mvn sonar:sonar \
-              -Dsonar.host.url=http://sonarqube:9000 \
-              -Dsonar.token=$SONAR_TOKEN)
+                    echo "========== SonarQube Eureka Server =========="
+                    (cd eurekaserver && mvn sonar:sonar \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.token=$SONAR_AUTH_TOKEN)
 
-            echo "========== SonarQube Gateway =========="
-            (cd gateway && mvn sonar:sonar \
-              -Dsonar.host.url=http://sonarqube:9000 \
-              -Dsonar.token=$SONAR_TOKEN \
-              -Dspring.cloud.config.enabled=false \
-              -Dspring.cloud.discovery.enabled=false \
-              -Deureka.client.enabled=false)
+                    echo "========== SonarQube Gateway =========="
+                    (cd gateway && mvn sonar:sonar \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.token=$SONAR_AUTH_TOKEN \
+                      -Dspring.cloud.config.enabled=false \
+                      -Dspring.cloud.discovery.enabled=false \
+                      -Deureka.client.enabled=false)
 
-            echo "========== SonarQube Dossier Medical Service =========="
-            (cd Microservices/dossieMedicale && mvn sonar:sonar \
-              -Dsonar.host.url=http://sonarqube:9000 \
-              -Dsonar.token=$SONAR_TOKEN \
-              -Dspring.cloud.config.enabled=false \
-              -Dspring.cloud.discovery.enabled=false \
-              -Deureka.client.enabled=false)
-            '''
+                    echo "========== SonarQube Dossier Medical Service =========="
+                    (cd Microservices/dossieMedicale && mvn sonar:sonar \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.token=$SONAR_AUTH_TOKEN \
+                      -Dspring.cloud.config.enabled=false \
+                      -Dspring.cloud.discovery.enabled=false \
+                      -Deureka.client.enabled=false)
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Check Docker Access') {
             steps {
@@ -133,7 +136,7 @@ pipeline {
         stage('Docker Hub Login') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
+                    credentialsId: 'dockerhub-credentials',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -196,7 +199,7 @@ pipeline {
 
         stage('Trigger CD Pipeline') {
             steps {
-                build job: 'docier-medical-CD',
+                build job: 'PediaNephro-CD',
                     parameters: [
                         string(name: 'IMAGE_TAG', value: "${BUILD_NUMBER}")
                     ]
@@ -221,11 +224,11 @@ pipeline {
         }
 
         success {
-            echo "CI/CD Pipeline completed successfully. Build, tests, SonarQube analysis, Docker push and CD trigger are OK."
+            echo "CI Pipeline completed successfully. Build, tests, SonarQube analysis, Docker push and CD trigger are OK."
         }
 
         failure {
-            echo "CI/CD Pipeline failed. Check logs, tests, SonarQube, Docker access or CD deployment."
+            echo "CI Pipeline failed. Check logs, tests, SonarQube, Docker access or CD deployment."
         }
     }
 }
