@@ -25,9 +25,13 @@ kind: Service
 metadata:
   name: config-server
   namespace: {{ .Values.namespace }}
+  labels:
+    app: config-server
+    monitored: "true"
 spec:
   selector:
     app: config-server
   ports:
-    - port: {{ .Values.config.port }}
+    - name: http
+      port: {{ .Values.config.port }}
       targetPort: {{ .Values.config.port }}
