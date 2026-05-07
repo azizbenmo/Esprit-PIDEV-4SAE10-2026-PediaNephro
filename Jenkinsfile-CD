@@ -65,30 +65,47 @@ pipeline {
             }
         }
 
-        stage('Wait For Deployment') {
-            steps {
-                sh '''
-                set -e
+       stage('Wait For Deployment') {
+    steps {
+        sh '''
+            set -e
+            echo "========== Waiting for deployments =========="
 
-                echo "========== Waiting for deployments =========="
-
-                echo "========== Waiting Config Server =========="
-                kubectl rollout status deployment/config-server -n $NAMESPACE --timeout=240s
-
-                echo "========== Waiting Eureka Server =========="
-                kubectl rollout status deployment/eureka-server -n $NAMESPACE --timeout=240s
-
-                echo "========== Waiting MySQL =========="
-                kubectl rollout status deployment/mysql -n $NAMESPACE --timeout=240s
-
-                echo "========== Waiting Gateway =========="
-                kubectl rollout status deployment/gateway -n $NAMESPACE --timeout=240s
-
-                echo "========== Waiting Dossier Medical =========="
-                kubectl rollout status deployment/dossier-medical -n $NAMESPACE --timeout=240s
-                '''
+            wait_for_deploy() {
+                DEPLOY=$1
+                MAX=24
+                i=1
+                echo "--- Waiting for $DEPLOY ---"
+                while [ $i -le $MAX ]; do
+                    STATUS=$(kubectl get deployment/$DEPLOY \
+                        -n $NAMESPACE \
+                        -o jsonpath='{.status.availableReplicas}' \
+                        2>/dev/null || echo "0")
+                    STATUS=${STATUS:-0}
+                    if [ "$STATUS" -ge 1 ] 2>/dev/null; then
+                        echo "✅ $DEPLOY is Ready (attempt $i)"
+                        return 0
+                    fi
+                    echo "⏳ Attempt $i/$MAX : $DEPLOY not ready, waiting 15s..."
+                    sleep 15
+                    i=$((i + 1))
+                done
+                echo "❌ $DEPLOY did NOT become ready after $((MAX * 15))s"
+                kubectl describe deployment/$DEPLOY -n $NAMESPACE || true
+                kubectl get pods -n $NAMESPACE -o wide || true
+                return 1
             }
-        }
+
+            wait_for_deploy config-server
+            wait_for_deploy eureka-server
+            wait_for_deploy mysql
+            wait_for_deploy gateway
+            wait_for_deploy dossier-medical
+
+            echo "========== All deployments are Ready =========="
+        '''
+    }
+}
 
         stage('Verify Deployment') {
             steps {
